@@ -36,45 +36,12 @@ class App:
     def run(self):
         last_time = glfw.get_time()
         while not glfw.window_should_close(self.window):
-            pan_speed = 0.04 / self.eye_zoom
-            zoom_speed = 1.02
-            # Measure the time for each frame
             current_time = glfw.get_time()
             frame_duration = current_time - last_time
             last_time = current_time
-
-            # Calculate FPS
             fps = 1.0 / frame_duration if frame_duration > 0 else 0
-            glfw.set_window_title(self.window, f"Zoom: {self.eye_zoom:.1f} x  -  Center: ( {self.eye_position[0]:.5f} + {self.eye_position[1]:.5f} i )  -  Render - FPS: {fps:.2f}")
+            glfw.set_window_title(self.window, f"Render - FPS: {fps:.2f}")
 
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_ESCAPE) == GLFW_CONSTANTS.GLFW_PRESS:
-                break
-                
-            # Capture pan and zoom inputs
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_UP) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_position[1] += pan_speed
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_DOWN) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_position[1] -= pan_speed
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_LEFT) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_position[0] -= pan_speed
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_RIGHT) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_position[0] += pan_speed
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_B) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_zoom /= zoom_speed
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_F) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_zoom *= zoom_speed 
-            if glfw.get_key(self.window, GLFW_CONSTANTS.GLFW_KEY_R) == GLFW_CONSTANTS.GLFW_PRESS:
-                self.eye_zoom  = 1
-                self.eye_position[0] = 0.0
-                self.eye_position[1] = 0.0
-
-
-            # Apply pan limits
-            self.eye_position[0] = max(-2.0, min(2.0, self.eye_position[0]))
-            self.eye_position[1] = max(-2.0, min(2.0, self.eye_position[1]))
-
-            # Apply zoom limits
-            self.eye_zoom = max(1.0, min(1000000000000.0, self.eye_zoom))
 
 
             glfw.poll_events()
@@ -84,8 +51,8 @@ class App:
             #glBindVertexArray(self.triangle_vao)
             #glDrawArrays(GL_TRIANGLES, 0,3)
             glUniform1f(self.u_time_location, current_time)
-            glUniform2d(glGetUniformLocation(self.shader,"center"), self.eye_position[0], self.eye_position[1])
-            glUniform1f(glGetUniformLocation(self.shader, "zoom"), np.sqrt(self.eye_zoom))
+            #glUniform2d(glGetUniformLocation(self.shader,"center"), self.eye_position[0], self.eye_position[1])
+            #glUniform1f(glGetUniformLocation(self.shader, "zoom"), np.sqrt(self.eye_zoom))
 
             glBindVertexArray(self.quad_vao)
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, None)
@@ -102,12 +69,14 @@ class App:
         glDeleteProgram(self.shader)
         glfw.destroy_window(self.window)
         glfw.terminate()
-'''
+
 class Camera:
     
     def __init__(self, position):
+        self.pos = (0, 0, 5)
+        self.up = (0, 1, 0)
     
-'''
+
 
 if __name__ == "__main__":
     my_app = App()

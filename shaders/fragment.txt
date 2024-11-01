@@ -1,44 +1,85 @@
-#version 450 core
+#version 330 core
+
+in vec3 fragmentColor;
 
 out vec4 screenColor;
 
-uniform int last_iteration;
-uniform dvec2 center;
-uniform dvec2 last_z;
 uniform float u_time;
-uniform float zoom;
+
+float sdfSphere(vec3 point, vec3 position, float radius) {
+    return length(point - position) - radius;
+}
+
+float sdfCube(vec3 point, vec3 b) {
+    vec3 q = abs(point) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+float smin(float a, float b, float k){
+    float h = max (k - abs(a-b), 0.0 )/k;
+    return min(a,b) - h*h*h*k*(1.0/6.0);
+}
+
+float map(vec3 point) {
+    //vec3 sphere_pos = vec3(sin(u_time), 0.0, cos(u_time)); 
+    vec3 sphere_pos = vec3(0.0);
+    float sphere_rad = 1.0;
+    float sphere = sdfSphere(point, sphere_pos, sphere_rad);
+    vec3 q = point;
+    q = fract(point) - 0.5;
+    float box = sdfCube(q, vec3(0.1));
+    float ground = point.y +  1.5;
+    //return min(ground, smin(sphere, box, 0.75)); 
+
+
+    return min(ground,sphere);
+}
+
+vec3 getNormal(vec3 p, vec3 position, float radius){
+    vec2 offset = vec2(0.0001, 0.0);
+    vec3 n = vec3(
+        sdfSphere(p+offset.xyy, position, radius) - sdfSphere(p - offset.xyy, position, radius),
+        sdfSphere(p+offset.yxy, position, radius) - sdfSphere(p - offset.yxy, position, radius),
+        sdfSphere(p+offset.yyx, position, radius) - sdfSphere(p - offset.yyx, position, radius)
+    );
+    return normalize(n);
+}
+
+vec3 rod_rot(vec3 p, vec3 axis, float angle){
+    return mix(dot(axis,p) * axis, p, cos(angle)) + cross(axis,p) * sin(angle);
+}
 
 void main() {
     vec2 resolution = vec2(640.0 * 2.0, 480.0 * 2.0);
-    vec2 xy = vec2(gl_FragCoord.xy);
-    dvec2 uv = (xy / resolution - 0.5) * 4.0 / (zoom * zoom) + center;
+    vec2 uv = (gl_FragCoord.xy / resolution - 0.5) * 2.0;
     uv.x *= resolution.x / resolution.y;
 
-
-    dvec2 z = dvec2(0.0, 0.0);
-    int iterations = 0;
-    int maxIterations = int(200 +  8*zoom); 
-
-    double z2; 
-    
-    for (iterations = 0; iterations < maxIterations; iterations++) {
-        z2 = dot(z,z); 
-        if (z2 > 4.0) break;
-        z = dvec2(z.x * z.x - z.y * z.y + uv.x, 2.0 * z.x * z.y + uv.y);
-    }
+    vec3 objCol = vec3(1.0, 0.2, 0.6);
+    vec3 lighting = vec3(0.0);
+    vec3 ambient = vec3(0.5);
+    vec3 light_color = vec3(1.0);
+    vec3 light_pos = vec3(sin(u_time),5, cos(u_time));
 
     
-    float colorFactor = 0.5 + 0.5 * sin(0.2 * float(iterations%(15 + int(zoom * zoom))) + u_time);
-    float escape_weight = (0.4 + 0.6 * float(iterations)/ float(maxIterations));
-    vec3 col = vec3(
-        colorFactor * escape_weight,
-        (1-colorFactor) * escape_weight,
-        (0.5 + 0.5 * cos(1-colorFactor))*escape_weight
-    );
+    
+    // Initialize camera position and ray direction
+    float cam_depth = 3.0;
+    vec3 cam = vec3(0.0, 0.0, -cam_depth);
+    vec3 ray = normalize(vec3(uv.x, uv.y, 1.0));
 
-    if (iterations > maxIterations * 0.99) {
-        col = vec3(0.0);
+    // Raymarching loop
+    float t = 0.0;
+    vec3 p = vec3(0.0);
+    for (int i = 0; i < 80; i++) {
+        p = cam + ray * t;
+        float dist = map(p);
+        if (dist < 0.001) break;
+        t += dist;   
     }
-
+    vec3 normal = getNormal(p, vec3(0.0), 1.0);
+    float diff_str = max(0.0, dot(light_pos, normal));
+    vec3 diffuse = light_color * diff_str;
+    lighting = vec3(t*0.1) + diffuse;
+    vec3 col = objCol * lighting; 
     screenColor = vec4(col, 1.0);
-};
+}
